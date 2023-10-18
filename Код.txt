@@ -1,0 +1,135 @@
+Модель:
+
+public class OrderModel
+{
+    public string ShelfName { get; set; }
+    public string ProductName { get; set; }
+    public int ProductId { get; set; }
+    public int OrderNumber { get; set; }
+    public int ProductQuantity { get; set; }
+    public string AdditionalShelves { get; set; }
+}
+
+Контроллер:
+
+using Npgsql;
+
+public class OrderController
+{
+    private readonly string connectionString;
+    private readonly IOrderView shelfView;
+
+    public OrderController(string connectionString, IOrderView shelfView)
+    {
+        this.connectionString = connectionString;
+        this.shelfView = shelfView;
+    }
+
+    public void PrintShelfInfo(int[] orderNumbers)
+    {
+        using (var conn = new NpgsqlConnection(connectionString))
+        {
+            conn.Open();
+
+            using (var command = new NpgsqlCommand())
+            {
+                command.Connection = conn;
+                command.CommandText = @"
+                    SELECT s.name AS shelf_name, p.name AS product_name, p.id AS product_id,
+                           o.number AS order_number, pi.quantity AS product_quantity,
+                           ARRAY_AGG(ps.name) AS additional_shelves
+                    FROM shelf s
+                    INNER JOIN product_on_shelf pos ON s.id = pos.shelf_id
+                    INNER JOIN product p ON pos.product_id = p.id
+                    INNER JOIN product_in_order pi ON p.id = pi.product_id
+                    INNER JOIN ""order"" o ON pi.order_id = o.id
+                    LEFT JOIN product_on_shelf pos2 ON p.id = pos2.product_id 
+                                                      AND pos2.is_main_shelf = false
+                    LEFT JOIN shelf ps ON pos2.shelf_id = ps.id
+                    WHERE pos.quantity != 0 AND o.number = ANY(:orderNumbers)
+                    GROUP BY s.name, p.name, p.id, o.number, pi.quantity
+                    ORDER BY s.name ASC";
+
+                command.Parameters.AddWithValue("orderNumbers", orderNumbers);
+
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        OrderModel order = new OrderModel();
+
+                        order.ShelfName = reader.GetString(0);
+                        order.ProductName = reader.GetString(1);
+                        order.ProductId = reader.GetInt32(2);
+                        order.OrderNumber = reader.GetInt32(3);
+                        order.ProductQuantity = reader.GetInt32(4);
+
+                        string[] AdditionalShelvesArray = (string[])reader.GetValue(5);
+                        order.AdditionalShelves = string.Join(", ", AdditionalShelvesArray);
+
+                        shelfView.PrintShelfInfo(order);
+                    }
+                }
+            }
+        }
+    }
+}
+
+Интерфейс вида:
+
+public interface IOrderView
+{
+    void PrintShelfInfo(OrderModel model);
+}
+
+Вид:
+
+public class OrderView : IOrderView
+{
+    public void PrintShelfInfo(OrderModel order)
+    {
+        Console.Write("\n");
+        Console.WriteLine("===Стеллаж {0}", order.ShelfName);
+        Console.WriteLine("{0} (id={1})", order.ProductName, order.ProductId);
+        Console.WriteLine("заказ {0}, {1} шт", order.OrderNumber, order.ProductQuantity);
+
+        if (!string.IsNullOrEmpty(order.AdditionalShelves))
+        {
+            Console.WriteLine("доп стеллаж: {0}", order.AdditionalShelves);
+        }
+
+        Console.WriteLine();
+    }
+}
+
+Мейн:
+
+
+public class Program
+{
+    public static void Main()
+    {
+        string connectionString = "Host=localhost;Username=postgres;Password=15127628;Database=TestDB";
+        IOrderView shelfView = new OrderView();
+        OrderController shelfController = new OrderController(connectionString, shelfView);
+
+        Console.Write("Введите номера заказов через запятую:\t");
+        try
+        {
+            string[] arr = Console.ReadLine().Split(',');
+            int[] req = new int[arr.Length];
+            for (int i = 0; i < arr.Length; i++)
+            {
+                req[i] = int.Parse(arr[i]);
+            }
+            shelfController.PrintShelfInfo(req);
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Неправильный ввод");
+        }
+    }
+}
+
+
+

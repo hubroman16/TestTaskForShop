@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "lVzoXdOhR+ZtOCQi70klvL8thMakTby/8kPfpZ/7OaJSHcym8zki55ypP8sUUa2nH0vgSr4MpR+WwCOFOSV8aQ==",
+  "success": true,
+  "projectFilePath": "D:\\тесты\\TestTaskForShop\\Shop\\Shop\\Shop.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\romma\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\6.0.0\\microsoft.extensions.logging.abstractions.6.0.0.nupkg.sha512",
+    "C:\\Users\\romma\\.nuget\\packages\\npgsql\\7.0.6\\npgsql.7.0.6.nupkg.sha512",
+    "C:\\Users\\romma\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
